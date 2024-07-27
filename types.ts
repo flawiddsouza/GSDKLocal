@@ -1,6 +1,6 @@
 import { SafeParseError, z } from 'zod';
 
-interface SessionConfig {
+export interface SessionConfig {
   sessionId: string
   sessionCookie: string
   initialPlayers?: string[]
@@ -47,14 +47,6 @@ export type HeartbeatResponse = {
   nextScheduledMaintenanceUtc?: string
   maintenanceSchedule?: MaintenanceSchedule
   operation: GameOperation
-}
-
-export type GameServerInstance = {
-  // gsdk allocator seems to use the docker container id as the server id,
-  // it's also called sessionHostId in gsdk config file
-  serverId: string
-  port: string
-  sessionConfig: SessionConfig
 }
 
 export const requestMultiplayerServerRequestBodySchema = z.object({
@@ -109,6 +101,10 @@ export namespace PlayFabRequestMultiplayer {
   }
 }
 
-export interface ValidationErrorResponse<T> {
+export interface SafeParseValidationErrorResponse<T> {
   error: SafeParseError<T>
+}
+
+export interface ValidationErrorResponse {
+  error: string
 }

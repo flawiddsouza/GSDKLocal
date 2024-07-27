@@ -8,15 +8,19 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "better-sqlite3": "^11.1.2",
     "dockerode": "^4.0.2",
+    "drizzle-orm": "^0.32.1",
     "fastify": "^4.28.1",
     "pino-pretty": "^11.2.2",
     "public-ip": "^7.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@types/dockerode": "^3.3.31",
     "@types/node": "^20.6.4",
+    "drizzle-kit": "^0.23.0",
     "husky": "^8.0.3",
     "nodemon": "^3.0.1",
     "typescript": "^5.5.4"

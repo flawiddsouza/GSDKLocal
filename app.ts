@@ -1,5 +1,4 @@
 import {
-  GameServerInstance,
   GameOperation,
   HeartbeatResponse,
   requestMultiplayerServerRequestBodySchema,
@@ -8,6 +7,7 @@ import {
   HeartbeatRequestBody,
   PlayFabRequestMultiplayer,
   ValidationErrorResponse,
+  SafeParseValidationErrorResponse,
 } from './types';
 import Fastify from 'fastify';
 import Docker from 'dockerode';
@@ -16,11 +16,12 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import { Constants } from './constants';
 import { fileURLToPath } from 'url';
+import * as db from './db';
+import { GameServerInstance } from './schema';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const gameServerInstances: GameServerInstance[] = [];
+const dockerDataDirectory = path.join(__dirname, 'docker-data');
 
 const envToLogger: { [key: string]: any } = {
   development: {
@@ -40,28 +41,11 @@ const fastify = Fastify({
   logger: envToLogger[process.env.NODE_ENV || 'development'],
 });
 
-const startPort = 5000;
-const endPort = 5100;
-
-const dataDirectory = path.join(__dirname, 'data')
-
-if (!existsSync(dataDirectory)) {
-  mkdirSync(dataDirectory, { recursive: true });
+if (!existsSync(dockerDataDirectory)) {
+  mkdirSync(dockerDataDirectory, { recursive: true });
 }
 
-function getPort(): string {
-  const usedPorts = gameServerInstances.map(gameServerInstance => gameServerInstance.port);
-
-  for (let port = startPort; port <= endPort; port++) {
-    if (!usedPorts.includes(port.toString())) {
-      return port.toString();
-    }
-  }
-
-  throw new Error('No available ports');
-}
-
-fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response |ValidationErrorResponse<RequestMultiplayerServerRequestBody>> => {
+fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   const validationResult = requestMultiplayerServerRequestBodySchema.safeParse(request.body);
 
   if (!validationResult.success) {
@@ -71,10 +55,23 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
 
   const body: RequestMultiplayerServerRequestBody = validationResult.data;
 
-  const port = getPort();
+  const build = await db.getBuild(body.BuildId);
+
+  if (!build) {
+    reply.type('application/json').code(400)
+    return { error: 'Build not found' }
+  }
+
+  const port = await db.getPort();
+
+  if (!port) {
+    reply.type('application/json').code(400)
+    return { error: 'No ports available' }
+  }
 
   const gameServerInstance: GameServerInstance = {
     serverId: '',
+    buildId: body.BuildId,
     sessionConfig: {
       sessionId: body.SessionId,
       sessionCookie: body.SessionCookie,
@@ -83,14 +80,12 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
     port: port,
   };
 
-  gameServerInstances.push(gameServerInstance);
-
   const docker = new Docker();
 
-  const gsdkConfigPath = path.join(dataDirectory, Constants.GSDK_CONFIG_FILENAME);
+  const gsdkConfigPath = path.join(dockerDataDirectory, Constants.GSDK_CONFIG_FILENAME);
 
   const container = await docker.createContainer({
-    Image: 'docker.io/library/zodiac-poker-game:test',
+    Image: build.imageName,
     HostConfig: {
       NetworkMode: 'host',
       PortBindings: {
@@ -99,7 +94,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
       Mounts: [
         {
           Target: '/data',
-          Source: dataDirectory,
+          Source: dockerDataDirectory,
           Type: 'bind',
         },
       ],
@@ -120,6 +115,8 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
     logFolder: `/data/GameLogs/${gameServerInstance.serverId}/`,
   }, null, 4));
 
+  await db.createGameServerInstance(gameServerInstance);
+
   await container.start();
 
   reply.type('application/json').code(200)
@@ -139,7 +136,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
 fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   const serverId = (request.params as { serverId: string }).serverId;
 
-  const gameServerInstance = gameServerInstances.find(gameServerInstance => gameServerInstance.serverId === serverId);
+  const gameServerInstance = await db.getGameServerInstance(serverId);
 
   if (!gameServerInstance) {
     reply.type('application/json').code(404)
