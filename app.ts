@@ -18,6 +18,9 @@ import { Constants } from './constants';
 import { fileURLToPath } from 'url';
 import * as db from './db';
 import { GameServerInstance } from './schema';
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +47,13 @@ const fastify = Fastify({
 if (!existsSync(dockerDataDirectory)) {
   mkdirSync(dockerDataDirectory, { recursive: true });
 }
+
+if (!process.env.PUBLIC_IP) {
+  const publicIp = await publicIpv4()
+  process.env.PUBLIC_IP = publicIp
+}
+
+console.log('Public IP:', process.env.PUBLIC_IP);
 
 fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   const validationResult = requestMultiplayerServerRequestBodySchema.safeParse(request.body);
@@ -106,8 +116,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
 
   gameServerInstance.serverId = container.id;
 
-  // const publicIp = await publicIpv4();
-  const publicIp = '127.0.0.1';
+  const publicIp = process.env.PUBLIC_IP;
 
   writeFileSync(gsdkConfigPath, JSON.stringify({
     heartbeatEndpoint: `${publicIp}:9006`,

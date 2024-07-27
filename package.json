@@ -10,6 +10,7 @@
   "dependencies": {
     "better-sqlite3": "^11.1.2",
     "dockerode": "^4.0.2",
+    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.32.1",
     "fastify": "^4.28.1",
     "pino-pretty": "^11.2.2",
