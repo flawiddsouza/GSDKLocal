@@ -1,20 +1,16 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import Database from 'better-sqlite3'
-import {
-  Build,
-  builds,
-  gameServerInstances,
-} from './schema'
-import { eq } from 'drizzle-orm'
 import { existsSync, mkdirSync } from 'node:fs'
-import { GameServerInstance } from './schema'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Constants } from './constants';
+import Database from 'better-sqlite3'
+import { eq } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { Constants } from './constants'
+import { type Build, builds, gameServerInstances } from './schema'
+import type { GameServerInstance } from './schema'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const dataDirectory = path.join(__dirname, 'data')
 
 if (!existsSync(dataDirectory)) {
@@ -28,8 +24,8 @@ sqlite.exec('PRAGMA foreign_keys = ON;')
 const db = drizzle(sqlite, {
   schema: {
     builds,
-    gameServerInstances
-  }
+    gameServerInstances,
+  },
 })
 
 try {
@@ -45,7 +41,7 @@ try {
 
 export async function getBuild(buildId: string): Promise<Build | undefined> {
   return db.query.builds.findFirst({
-    where: eq(builds.buildId, buildId)
+    where: eq(builds.buildId, buildId),
   }) as Promise<Build | undefined>
 }
 
@@ -72,7 +68,7 @@ export async function getBuild(buildId: string): Promise<Build | undefined> {
 
 export async function getGameServerInstance(serverId: string): Promise<GameServerInstance | undefined> {
   return db.query.gameServerInstances.findFirst({
-    where: eq(gameServerInstances.serverId, serverId)
+    where: eq(gameServerInstances.serverId, serverId),
   }) as Promise<GameServerInstance | undefined>
 }
 
@@ -91,11 +87,13 @@ export async function createGameServerInstance(gameServerInstance: GameServerIns
 // }
 
 export async function getUsedPorts() {
-  const data = await db.select({
-    port: gameServerInstances.port
-  }).from(gameServerInstances)
+  const data = await db
+    .select({
+      port: gameServerInstances.port,
+    })
+    .from(gameServerInstances)
 
-  return data.map(row => row.port)
+  return data.map((row) => row.port)
 }
 
 export async function getPort(): Promise<string | false> {

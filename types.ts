@@ -1,4 +1,6 @@
-import { SafeParseError, z } from 'zod';
+import type { FastifyLoggerOptions } from 'fastify'
+import type { PinoLoggerOptions } from 'fastify/types/logger'
+import { type SafeParseError, z } from 'zod'
 
 export interface SessionConfig {
   sessionId: string
@@ -7,8 +9,7 @@ export interface SessionConfig {
   metadata: { [key: string]: string }
 }
 
-enum GameState
-{
+enum GameState {
   Invalid = 'Invalid',
   Initializing = 'Initializing',
   StandingBy = 'StandingBy',
@@ -19,10 +20,10 @@ enum GameState
 }
 
 export enum GameOperation {
-  Invalid,
-  Continue,
-  Active,
-  Terminate
+  Invalid = 0,
+  Continue = 1,
+  Active = 2,
+  Terminate = 3,
 }
 
 interface MaintenanceSchedule {
@@ -73,6 +74,10 @@ export namespace PlayFabRequestMultiplayer {
     data?: ResponseData
   }
 
+  interface ConnectedPlayer {
+    PlayerId: string
+  }
+
   interface ResponseData {
     SessionId?: string
     ServerId?: string
@@ -83,7 +88,7 @@ export namespace PlayFabRequestMultiplayer {
     Ports?: Port[]
     Region?: string
     State?: string
-    ConnectedPlayers?: any[]
+    ConnectedPlayers?: ConnectedPlayer[]
     LastStateTransitionTime: Date
     BuildId?: string
   }
@@ -108,3 +113,5 @@ export interface SafeParseValidationErrorResponse<T> {
 export interface ValidationErrorResponse {
   error: string
 }
+
+export type EnvToLoggerType = Record<string, boolean | (PinoLoggerOptions & FastifyLoggerOptions)>

@@ -5,6 +5,7 @@
     "start": "npx tsx app.ts",
     "dev": "nodemon --exec npx tsx app.ts --ext ts",
     "typecheck": "tsc",
+    "lint-and-format": "npx @biomejs/biome check --write",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -19,12 +20,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
     "@types/better-sqlite3": "^7.6.11",
     "@types/dockerode": "^3.3.31",
     "@types/node": "^20.6.4",
     "drizzle-kit": "^0.23.0",
     "husky": "^8.0.3",
     "nodemon": "^3.0.1",
+    "tsx": "^4.16.2",
     "typescript": "^5.5.4"
   }
 }
