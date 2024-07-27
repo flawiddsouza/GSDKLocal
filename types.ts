@@ -9,7 +9,7 @@ export interface SessionConfig {
   metadata: { [key: string]: string }
 }
 
-enum GameState {
+export enum GameState {
   Invalid = 'Invalid',
   Initializing = 'Initializing',
   StandingBy = 'StandingBy',
@@ -44,7 +44,7 @@ interface MaintenanceEvent {
 }
 
 export type HeartbeatResponse = {
-  sessionConfig: SessionConfig
+  sessionConfig?: SessionConfig
   nextScheduledMaintenanceUtc?: string
   maintenanceSchedule?: MaintenanceSchedule
   operation: GameOperation

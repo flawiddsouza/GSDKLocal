@@ -9,7 +9,7 @@ import { publicIpv4 } from 'public-ip'
 import { Constants } from './constants'
 import * as db from './db'
 import { type GameServerInstanceCreateOrUpdate, buildCreateOrUpdateSchema } from './schema'
-import { GameOperation, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
+import { GameOperation, GameState, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
 import type { EnvToLoggerType, HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
 dotenv.config()
@@ -229,8 +229,16 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   console.log(body)
 
   const heartbeatResponse: HeartbeatResponse = {
-    sessionConfig: gameServerInstance.sessionConfig,
-    operation: GameOperation.Active,
+    operation: GameOperation.Invalid,
+  }
+
+  if (body.CurrentGameState === GameState.StandingBy) {
+    heartbeatResponse.operation = GameOperation.Active
+    heartbeatResponse.sessionConfig = gameServerInstance.sessionConfig
+  }
+
+  if (body.CurrentGameState === GameState.Active) {
+    heartbeatResponse.operation = GameOperation.Continue
   }
 
   reply.type('application/json').code(200)
