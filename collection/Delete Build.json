@@ -1,0 +1,18 @@
+{
+    "_type": "request",
+    "method": "DELETE",
+    "body": {
+        "mimeType": "No Body",
+        "text": ""
+    },
+    "sortOrder": 3,
+    "url": "{{API_URL}}/build/:buildId",
+    "parameters": [],
+    "pathParameters": [
+        {
+            "name": "buildId",
+            "value": "test"
+        }
+    ],
+    "headers": []
+}

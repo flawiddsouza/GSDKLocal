@@ -8,25 +8,16 @@ import Fastify from 'fastify'
 import { publicIpv4 } from 'public-ip'
 import { Constants } from './constants'
 import * as db from './db'
-import type { GameServerInstance } from './schema'
-import {
-  type EnvToLoggerType,
-  GameOperation,
-  type HeartbeatRequestBody,
-  type HeartbeatResponse,
-  type PlayFabRequestMultiplayer,
-  type RequestMultiplayerServerRequestBody,
-  type SafeParseValidationErrorResponse,
-  type ValidationErrorResponse,
-  heartbeatRequestBodySchema,
-  requestMultiplayerServerRequestBodySchema,
-} from './types'
+import { type GameServerInstanceCreateOrUpdate, buildCreateOrUpdateSchema } from './schema'
+import { GameOperation, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
+import type { EnvToLoggerType, HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const dockerDataDirectory = path.join(__dirname, 'docker-data')
+const portMutex = new Mutex()
 
 const envToLogger: EnvToLoggerType = {
   development: {
@@ -57,8 +48,58 @@ if (!process.env.PUBLIC_IP) {
 
 console.log('Public IP:', process.env.PUBLIC_IP)
 
-// Create the mutex
-const portMutex = new Mutex()
+fastify.get('/builds', async () => {
+  return db.getBuilds()
+})
+
+fastify.post('/build', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<GameServerInstanceCreateOrUpdate> | ValidationErrorResponse> => {
+  const validationResult = buildCreateOrUpdateSchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  await db.createBuild(body)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
+fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<GameServerInstanceCreateOrUpdate> | ValidationErrorResponse> => {
+  const buildId = (request.params as { buildId: string }).buildId
+
+  const validationResult = buildCreateOrUpdateSchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  await db.updateBuild(buildId, body)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
+fastify.delete('/build/:buildId', async (request, reply) => {
+  const buildId = (request.params as { buildId: string }).buildId
+
+  await db.deleteBuild(buildId)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
 
 fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   // Wait for the lock to be available
@@ -88,7 +129,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
       return { error: 'No ports available' }
     }
 
-    const gameServerInstance: GameServerInstance = {
+    const gameServerInstance: GameServerInstanceCreateOrUpdate = {
       serverId: '',
       buildId: body.BuildId,
       sessionConfig: {

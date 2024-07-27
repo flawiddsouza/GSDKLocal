@@ -1,0 +1,23 @@
+{
+    "_type": "request",
+    "method": "PUT",
+    "body": {
+        "mimeType": "application/json",
+        "text": "{\n    \"buildId\": \"test\",\n    \"imageName\": \"test\"\n}"
+    },
+    "sortOrder": 2,
+    "url": "{{API_URL}}/build/:buildId",
+    "parameters": [],
+    "pathParameters": [
+        {
+            "name": "buildId",
+            "value": "test"
+        }
+    ],
+    "headers": [
+        {
+            "name": "Content-Type",
+            "value": "application/json"
+        }
+    ]
+}

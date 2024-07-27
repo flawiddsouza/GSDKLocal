@@ -1,0 +1,18 @@
+{
+    "_type": "request",
+    "method": "POST",
+    "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+    },
+    "sortOrder": 4,
+    "headers": [
+        {
+            "name": "Content-Type",
+            "value": "application/json"
+        }
+    ],
+    "url": "{{API_URL}}/requestMultiplayerServer",
+    "parameters": [],
+    "pathParameters": []
+}

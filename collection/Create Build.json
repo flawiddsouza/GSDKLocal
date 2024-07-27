@@ -1,0 +1,18 @@
+{
+    "_type": "request",
+    "method": "POST",
+    "body": {
+        "mimeType": "application/json",
+        "text": "{\n    \"buildId\": \"test\",\n    \"imageName\": \"test\"\n}"
+    },
+    "sortOrder": 1,
+    "url": "{{API_URL}}/build",
+    "parameters": [],
+    "pathParameters": [],
+    "headers": [
+        {
+            "name": "Content-Type",
+            "value": "application/json"
+        }
+    ]
+}

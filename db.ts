@@ -6,8 +6,8 @@ import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { Constants } from './constants'
-import { type Build, builds, gameServerInstances } from './schema'
-import type { GameServerInstance } from './schema'
+import { builds, gameServerInstances } from './schema'
+import type { Build, BuildCreateOrUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -45,22 +45,21 @@ export async function getBuild(buildId: string): Promise<Build | undefined> {
   }) as Promise<Build | undefined>
 }
 
-// export async function getBuilds() {
-//   return db.select().from(builds)
-// }
+export async function getBuilds() {
+  return db.select().from(builds)
+}
 
-// export async function createBuild(build: Build) {
-//   await db.insert(builds).values(build)
-// }
+export async function createBuild(build: BuildCreateOrUpdate) {
+  await db.insert(builds).values(build)
+}
 
-// export async function updateBuild(id: number, update: Partial<Build>) {
-//   return db.update(builds).set(update)
-//     .where(eq(builds.id, id))
-// }
+export async function updateBuild(buildId: string, update: Partial<BuildCreateOrUpdate>) {
+  return db.update(builds).set(update).where(eq(builds.buildId, buildId))
+}
 
-// export async function deleteBuild(id: number) {
-//   return db.delete(builds).where(eq(builds.id, id))
-// }
+export async function deleteBuild(buildId: string) {
+  return db.delete(builds).where(eq(builds.buildId, buildId))
+}
 
 // export async function getGameServerInstances() {
 //   return db.select().from(gameServerInstances)
@@ -72,12 +71,12 @@ export async function getGameServerInstance(serverId: string): Promise<GameServe
   }) as Promise<GameServerInstance | undefined>
 }
 
-export async function createGameServerInstance(gameServerInstance: GameServerInstance) {
+export async function createGameServerInstance(gameServerInstance: GameServerInstanceCreateOrUpdate) {
   console.log('Creating game server instance', gameServerInstance)
   await db.insert(gameServerInstances).values(gameServerInstance)
 }
 
-// export async function updateGameServerInstance(id: number, update: Partial<GameServerInstance>) {
+// export async function updateGameServerInstance(id: number, update: Partial<GameServerInstanceCreateOrUpdate>) {
 //   return db.update(gameServerInstances).set(update)
 //     .where(eq(gameServerInstances.id, id))
 // }
