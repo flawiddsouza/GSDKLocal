@@ -1,5 +1,25 @@
 # GSDK Local
 
+#### Development & Production
+
+Setup
+
+```sh
+npm i
+```
+
+Running during development (with code reloading)
+
+```sh
+npm run dev
+```
+
+Running in production
+
+```sh
+npm start
+```
+
 #### Migrations
 
 Generate migrations from schema.ts
