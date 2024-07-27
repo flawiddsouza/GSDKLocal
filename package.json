@@ -1,0 +1,24 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx app.ts",
+    "dev": "nodemon --exec npx tsx app.ts --ext ts",
+    "typecheck": "tsc",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "fastify": "^4.28.1",
+    "pino-pretty": "^11.2.2",
+    "public-ip": "^7.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.31",
+    "@types/node": "^20.6.4",
+    "husky": "^8.0.3",
+    "nodemon": "^3.0.1",
+    "typescript": "^5.5.4"
+  }
+}
