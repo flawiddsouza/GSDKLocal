@@ -3,7 +3,7 @@
     "method": "POST",
     "body": {
         "mimeType": "application/json",
-        "text": "{\n    \"host\": \"192.168.50.98:9006\"\n}"
+        "text": "{\n    \"host\": \"http://192.168.50.98:9006\"\n}"
     },
     "sortOrder": 5,
     "url": "{{API_URL}}/agent",

@@ -6,18 +6,21 @@ import Docker from 'dockerode'
 import dotenv from 'dotenv'
 import Fastify from 'fastify'
 import { publicIpv4 } from 'public-ip'
+import * as agentApi from './agent-api'
 import { Constants } from './constants'
 import * as db from './db'
 import { logger } from './logger'
 import { type GameServerInstanceCreateOrUpdate, agentCeateOrUpdateSchema, buildCreateOrUpdateSchema } from './schema'
-import { GameOperation, GameState, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
+import { GameOperation, GameState, createContainerRequestBodySchema, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema, startContainerRequestBodySchema } from './types'
 import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
 dotenv.config()
 
+const applicationPort = Number(process.env.PORT) || 9006
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const dockerDataDirectory = path.join(__dirname, 'docker-data')
+const gsdkConfigPath = path.join(dockerDataDirectory, Constants.GSDK_CONFIG_FILENAME)
 const portMutex = new Mutex()
 const gameServerInstanceHeartbeatTracker = new Map<string, Date>()
 const gameServerInstanceInitiateTermination = new Set<string>()
@@ -143,6 +146,79 @@ fastify.delete('/agent/:id', async (request, reply) => {
   }
 })
 
+fastify.post('/createContainer', async (request, reply) => {
+  const validationResult = createContainerRequestBodySchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  const docker = new Docker()
+
+  const container = await docker.createContainer({
+    Image: body.imageName,
+    HostConfig: {
+      NetworkMode: 'host',
+      PortBindings: {
+        [`${body.port}/tcp`]: [{ HostPort: body.port }],
+      },
+      Mounts: [
+        {
+          Target: '/data',
+          Source: dockerDataDirectory,
+          Type: 'bind',
+        },
+      ],
+    },
+    Env: [`GSDK_CONFIG_FILE=/data/${Constants.GSDK_CONFIG_FILENAME}`],
+  })
+
+  reply.type('application/json').code(200)
+  return {
+    containerId: container.id,
+  }
+})
+
+fastify.post('/startContainer/:containerId', async (request, reply) => {
+  const containerId = (request.params as { containerId: string }).containerId
+
+  const validationResult = startContainerRequestBodySchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  const docker = new Docker()
+
+  const container = docker.getContainer(containerId)
+
+  writeFileSync(
+    gsdkConfigPath,
+    JSON.stringify(
+      {
+        heartbeatEndpoint: body.heartbeatEndpoint,
+        sessionHostId: body.serverId,
+        logFolder: `/data/GameLogs/${body.serverId}/`,
+      },
+      null,
+      4,
+    ),
+  )
+
+  await container.start()
+
+  reply.type('application/json').code(200)
+  return {
+    publicIp: process.env.PUBLIC_IP,
+  }
+})
+
 fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   // Wait for the lock to be available
   const release = await portMutex.acquire()
@@ -191,48 +267,27 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
       status: GameState.StandingBy,
     }
 
-    const docker = new Docker()
+    const createContainerResponse = await agentApi.createContainer(agent, build.imageName, port)
 
-    const gsdkConfigPath = path.join(dockerDataDirectory, Constants.GSDK_CONFIG_FILENAME)
+    if (!createContainerResponse.success) {
+      reply.type('application/json').code(500)
+      return { error: 'Failed to create container' }
+    }
 
-    const container = await docker.createContainer({
-      Image: build.imageName,
-      HostConfig: {
-        NetworkMode: 'host',
-        PortBindings: {
-          [`${port}/tcp`]: [{ HostPort: port }],
-        },
-        Mounts: [
-          {
-            Target: '/data',
-            Source: dockerDataDirectory,
-            Type: 'bind',
-          },
-        ],
-      },
-      Env: [`GSDK_CONFIG_FILE=/data/${Constants.GSDK_CONFIG_FILENAME}`],
-    })
+    const containerId = createContainerResponse.containerId
 
-    gameServerInstance.serverId = container.id
-
-    const publicIp = process.env.PUBLIC_IP
-
-    writeFileSync(
-      gsdkConfigPath,
-      JSON.stringify(
-        {
-          heartbeatEndpoint: `${publicIp}:9006`,
-          sessionHostId: gameServerInstance.serverId,
-          logFolder: `/data/GameLogs/${gameServerInstance.serverId}/`,
-        },
-        null,
-        4,
-      ),
-    )
+    gameServerInstance.serverId = containerId
 
     await db.createGameServerInstance(gameServerInstance)
 
-    await container.start()
+    const startContainerResponse = await agentApi.startContainer(agent, containerId, `${process.env.PUBLIC_IP}:${applicationPort}`, gameServerInstance.serverId)
+
+    if (!startContainerResponse.success) {
+      reply.type('application/json').code(500)
+      return { error: 'Failed to start container' }
+    }
+
+    const publicIp = startContainerResponse.publicIp
 
     reply.type('application/json').code(200)
     return {
@@ -371,7 +426,7 @@ async function checkHeartbeats() {
 
 setTimeout(checkHeartbeats, 1000)
 
-fastify.listen({ host: '0.0.0.0', port: 9006 }, (err, address) => {
+fastify.listen({ host: '0.0.0.0', port: applicationPort }, (err, address) => {
   if (err) {
     throw err
   }

@@ -114,3 +114,13 @@ export interface ValidationErrorResponse {
 }
 
 export type EnvToLoggerType = Record<string, PinoLoggerOptions>
+
+export const createContainerRequestBodySchema = z.object({
+  imageName: z.string(),
+  port: z.string(),
+})
+
+export const startContainerRequestBodySchema = z.object({
+  heartbeatEndpoint: z.string(),
+  serverId: z.string(),
+})

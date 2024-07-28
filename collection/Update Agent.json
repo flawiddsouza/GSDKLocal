@@ -3,7 +3,7 @@
     "method": "PUT",
     "body": {
         "mimeType": "application/json",
-        "text": "{\n    \"host\": \"192.168.50.98:9006\"\n}"
+        "text": "{\n    \"host\": \"http://192.168.50.98:9006\"\n}"
     },
     "sortOrder": 6,
     "url": "{{API_URL}}/agent/:agentId",

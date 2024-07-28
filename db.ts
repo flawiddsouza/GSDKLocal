@@ -73,8 +73,7 @@ export async function getAvailableAgent(): Promise<Agent | undefined> {
       count: sql`COUNT(gameServerInstances.id)`,
     })
     .from(agents)
-    .leftJoin(gameServerInstances, eq(agents.id, gameServerInstances.agentId))
-    .where(not(eq(gameServerInstances.status, GameState.Terminated)))
+    .leftJoin(gameServerInstances, and(eq(agents.id, gameServerInstances.agentId), not(eq(gameServerInstances.status, GameState.Terminated))))
     .groupBy(gameServerInstances.agentId)
 
   for (const allocatedCountByAgent of allocatedGameServerInstancesCountByAgentId) {
