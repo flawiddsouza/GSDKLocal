@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
-import { and, eq, inArray, not } from 'drizzle-orm'
+import { and, eq, not } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { Constants } from './constants'
@@ -85,7 +85,7 @@ export async function updateGameServerInstance(serverId: string, update: Partial
   return db
     .update(gameServerInstances)
     .set(update)
-    .where(and(eq(gameServerInstances.serverId, serverId), inArray(gameServerInstances.status, [GameState.StandingBy, GameState.Active])))
+    .where(and(eq(gameServerInstances.serverId, serverId), not(eq(gameServerInstances.status, GameState.Terminated))))
 }
 
 export async function getUsedPorts() {
@@ -94,7 +94,7 @@ export async function getUsedPorts() {
       port: gameServerInstances.port,
     })
     .from(gameServerInstances)
-    .where(inArray(gameServerInstances.status, [GameState.StandingBy, GameState.Active]))
+    .where(not(eq(gameServerInstances.status, GameState.Terminated)))
 
   return data.map((row) => row.port)
 }
