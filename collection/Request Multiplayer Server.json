@@ -5,7 +5,7 @@
         "mimeType": "application/json",
         "text": "{\n    \"PreferredRegions\": [],\n    \"SessionId\": \"83d41160-0d0e-48c6-b25f-d73e91c4374c\",\n    \"BuildId\": \"test\",\n    \"SessionCookie\": \"my-api-key\"\n}"
     },
-    "sortOrder": 4,
+    "sortOrder": 8,
     "headers": [
         {
             "name": "Content-Type",

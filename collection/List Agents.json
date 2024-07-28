@@ -4,8 +4,8 @@
     "body": {
         "mimeType": "No Body"
     },
-    "sortOrder": 9,
-    "url": "{{API_URL}}/gameServerInstances",
+    "sortOrder": 4,
+    "url": "{{API_URL}}/agents",
     "parameters": [],
     "pathParameters": []
 }

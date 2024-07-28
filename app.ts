@@ -9,7 +9,7 @@ import { publicIpv4 } from 'public-ip'
 import { Constants } from './constants'
 import * as db from './db'
 import { logger } from './logger'
-import { type GameServerInstanceCreateOrUpdate, buildCreateOrUpdateSchema } from './schema'
+import { type GameServerInstanceCreateOrUpdate, agentCeateOrUpdateSchema, buildCreateOrUpdateSchema } from './schema'
 import { GameOperation, GameState, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
 import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
@@ -90,6 +90,59 @@ fastify.delete('/build/:buildId', async (request, reply) => {
   }
 })
 
+fastify.get('/agents', async () => {
+  return db.getAgents()
+})
+
+fastify.post('/agent', async (request, reply) => {
+  const validationResult = agentCeateOrUpdateSchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  await db.createAgent(body)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
+fastify.put('/agent/:id', async (request, reply) => {
+  const id = (request.params as { id: number }).id
+
+  const validationResult = agentCeateOrUpdateSchema.safeParse(request.body)
+
+  if (!validationResult.success) {
+    reply.type('application/json').code(400)
+    return { error: validationResult }
+  }
+
+  const body = validationResult.data
+
+  await db.updateAgent(id, body)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
+fastify.delete('/agent/:id', async (request, reply) => {
+  const id = (request.params as { id: number }).id
+
+  await db.deleteAgent(id)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
 fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   // Wait for the lock to be available
   const release = await portMutex.acquire()
@@ -111,7 +164,14 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
       return { error: 'Build not found' }
     }
 
-    const port = await db.getPort()
+    const agent = await db.getAvailableAgent()
+
+    if (!agent) {
+      reply.type('application/json').code(400)
+      return { error: 'No agents available' }
+    }
+
+    const port = await db.getPort(agent.id)
 
     if (!port) {
       reply.type('application/json').code(400)
@@ -119,6 +179,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
     }
 
     const gameServerInstance: GameServerInstanceCreateOrUpdate = {
+      agentId: agent.id,
       serverId: '',
       buildId: body.BuildId,
       port: port,

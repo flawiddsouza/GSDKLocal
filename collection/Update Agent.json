@@ -1,0 +1,23 @@
+{
+    "_type": "request",
+    "method": "PUT",
+    "body": {
+        "mimeType": "application/json",
+        "text": "{\n    \"host\": \"192.168.50.98:9006\"\n}"
+    },
+    "sortOrder": 6,
+    "url": "{{API_URL}}/agent/:agentId",
+    "parameters": [],
+    "pathParameters": [
+        {
+            "name": "agentId",
+            "value": "1"
+        }
+    ],
+    "headers": [
+        {
+            "name": "Content-Type",
+            "value": "application/json"
+        }
+    ]
+}

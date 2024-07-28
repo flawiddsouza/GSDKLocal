@@ -5,7 +5,7 @@
         "mimeType": "No Body",
         "text": ""
     },
-    "sortOrder": 6,
+    "sortOrder": 10,
     "url": "{{API_URL}}/terminateGameServerInstance/:serverId",
     "parameters": [],
     "pathParameters": [

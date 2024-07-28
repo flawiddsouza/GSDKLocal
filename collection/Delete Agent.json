@@ -1,0 +1,18 @@
+{
+    "_type": "request",
+    "method": "DELETE",
+    "body": {
+        "mimeType": "No Body",
+        "text": ""
+    },
+    "sortOrder": 7,
+    "url": "{{API_URL}}/agent/:agentId",
+    "parameters": [],
+    "pathParameters": [
+        {
+            "name": "agentId",
+            "value": "1"
+        }
+    ],
+    "headers": []
+}

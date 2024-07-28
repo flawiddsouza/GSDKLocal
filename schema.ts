@@ -20,10 +20,28 @@ export type BuildCreateOrUpdate = InferInsertModel<typeof builds>
 
 export const buildCreateOrUpdateSchema = createInsertSchema(builds)
 
+export const agents = sqliteTable('agents', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  host: text('host').notNull().unique(),
+  createdAt: text('createdAt').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updatedAt')
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+})
+
+export type Agent = InferSelectModel<typeof agents>
+
+export type AgentCreateOrUpdate = InferInsertModel<typeof agents>
+
+export const agentCeateOrUpdateSchema = createInsertSchema(agents)
+
 export const gameServerInstances = sqliteTable(
   'gameServerInstances',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
+    agentId: integer('agentId')
+      .references(() => agents.id, { onDelete: 'restrict' })
+      .notNull(),
     // gsdk allocator seems to use the docker container id as the server id,
     // it's also called sessionHostId in gsdk config file
     serverId: text('serverId').notNull(),

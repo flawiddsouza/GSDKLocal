@@ -1,9 +1,56 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "1ea38798-d087-4947-9c4d-8185b227a3bb",
+  "id": "07d08da8-c76d-4893-b2c1-bd0948b31316",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "agents": {
+      "name": "agents",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "host": {
+          "name": "host",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "agents_host_unique": {
+          "name": "agents_host_unique",
+          "columns": [
+            "host"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
     "builds": {
       "name": "builds",
       "columns": {
@@ -67,6 +114,13 @@
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
+        },
+        "agentId": {
+          "name": "agentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "serverId": {
           "name": "serverId",
@@ -137,6 +191,19 @@
         }
       },
       "foreignKeys": {
+        "gameServerInstances_agentId_agents_id_fk": {
+          "name": "gameServerInstances_agentId_agents_id_fk",
+          "tableFrom": "gameServerInstances",
+          "tableTo": "agents",
+          "columnsFrom": [
+            "agentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
         "gameServerInstances_buildId_builds_buildId_fk": {
           "name": "gameServerInstances_buildId_builds_buildId_fk",
           "tableFrom": "gameServerInstances",
