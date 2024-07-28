@@ -32,6 +32,7 @@ export const gameServerInstances = sqliteTable(
       .notNull(),
     port: text('port').notNull(),
     sessionConfig: text('sessionConfig', { mode: 'json' }).notNull(),
+    status: text('status', { enum: ['StandingBy', 'Active', 'Terminated'] }).notNull(),
     createdAt: text('createdAt').default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text('updatedAt')
       .default(sql`CURRENT_TIMESTAMP`)
@@ -40,6 +41,7 @@ export const gameServerInstances = sqliteTable(
   (table) => {
     return {
       serverIdIndex: index('serverIdIndex').on(table.serverId),
+      statusIndex: index('statusIndex').on(table.status),
     }
   },
 )

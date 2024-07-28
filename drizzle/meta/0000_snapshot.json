@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "252794b0-f009-4baa-a29a-81faac7818e8",
+  "id": "1ea38798-d087-4947-9c4d-8185b227a3bb",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "builds": {
@@ -96,6 +96,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "text",
@@ -118,6 +125,13 @@
           "name": "serverIdIndex",
           "columns": [
             "serverId"
+          ],
+          "isUnique": false
+        },
+        "statusIndex": {
+          "name": "statusIndex",
+          "columns": [
+            "status"
           ],
           "isUnique": false
         }

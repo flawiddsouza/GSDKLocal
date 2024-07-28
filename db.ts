@@ -2,12 +2,13 @@ import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray, not } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { Constants } from './constants'
 import { builds, gameServerInstances } from './schema'
 import type { Build, BuildCreateOrUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
+import { GameState } from './types'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -61,14 +62,17 @@ export async function deleteBuild(buildId: string) {
   return db.delete(builds).where(eq(builds.buildId, buildId))
 }
 
-// export async function getGameServerInstances() {
-//   return db.select().from(gameServerInstances)
-// }
-
 export async function getGameServerInstance(serverId: string): Promise<GameServerInstance | undefined> {
   return db.query.gameServerInstances.findFirst({
     where: eq(gameServerInstances.serverId, serverId),
   }) as Promise<GameServerInstance | undefined>
+}
+
+export async function getUnterminatedGameServerInstances() {
+  return db
+    .select()
+    .from(gameServerInstances)
+    .where(not(eq(gameServerInstances.status, GameState.Terminated)))
 }
 
 export async function createGameServerInstance(gameServerInstance: GameServerInstanceCreateOrUpdate) {
@@ -76,14 +80,12 @@ export async function createGameServerInstance(gameServerInstance: GameServerIns
   await db.insert(gameServerInstances).values(gameServerInstance)
 }
 
-// export async function updateGameServerInstance(id: number, update: Partial<GameServerInstanceCreateOrUpdate>) {
-//   return db.update(gameServerInstances).set(update)
-//     .where(eq(gameServerInstances.id, id))
-// }
-
-// export async function deleteGameServerInstance(id: number) {
-//   return db.delete(gameServerInstances).where(eq(gameServerInstances.id, id))
-// }
+export async function updateGameServerInstance(serverId: string, update: Partial<GameServerInstanceCreateOrUpdate>) {
+  return db
+    .update(gameServerInstances)
+    .set(update)
+    .where(and(eq(gameServerInstances.serverId, serverId), inArray(gameServerInstances.status, [GameState.StandingBy, GameState.Active])))
+}
 
 export async function getUsedPorts() {
   const data = await db
@@ -91,6 +93,7 @@ export async function getUsedPorts() {
       port: gameServerInstances.port,
     })
     .from(gameServerInstances)
+    .where(inArray(gameServerInstances.status, [GameState.StandingBy, GameState.Active]))
 
   return data.map((row) => row.port)
 }

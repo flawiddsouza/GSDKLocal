@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { setInterval } from 'node:timers'
 import { fileURLToPath } from 'node:url'
 import { Mutex } from 'async-mutex'
 import Docker from 'dockerode'
@@ -18,6 +19,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const dockerDataDirectory = path.join(__dirname, 'docker-data')
 const portMutex = new Mutex()
+const gameServerInstanceHeartbeatTracker = new Map<string, Date>()
 
 const envToLogger: EnvToLoggerType = {
   development: {
@@ -132,12 +134,13 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
     const gameServerInstance: GameServerInstanceCreateOrUpdate = {
       serverId: '',
       buildId: body.BuildId,
+      port: port,
       sessionConfig: {
         sessionId: body.SessionId,
         sessionCookie: body.SessionCookie,
         metadata: { gamePort: port },
       },
-      port: port,
+      status: GameState.StandingBy,
     }
 
     const docker = new Docker()
@@ -238,12 +241,51 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   }
 
   if (body.CurrentGameState === GameState.Active) {
+    if (gameServerInstance.status !== GameState.Active) {
+      await db.updateGameServerInstance(gameServerInstance.serverId, {
+        status: GameState.Active,
+      })
+    }
     heartbeatResponse.operation = GameOperation.Continue
   }
+
+  gameServerInstanceHeartbeatTracker.set(serverId, new Date())
 
   reply.type('application/json').code(200)
   return heartbeatResponse
 })
+
+async function checkHeartbeats() {
+  console.log('Checking heartbeats')
+
+  const THIRTY_SECONDS = 30 * 1000
+  const now = new Date()
+
+  const gameServerInstances = await db.getUnterminatedGameServerInstances()
+
+  console.log('Game server instances:', gameServerInstances.length)
+
+  for (const gameServerInstance of gameServerInstances) {
+    if (!gameServerInstanceHeartbeatTracker.has(gameServerInstance.serverId)) {
+      gameServerInstanceHeartbeatTracker.set(gameServerInstance.serverId, now)
+    }
+    const lastHeartbeat = gameServerInstanceHeartbeatTracker.get(gameServerInstance.serverId)
+
+    if (!lastHeartbeat) {
+      throw new Error('lastHeartbeat is undefined, this should not happen')
+    }
+
+    if (now.getTime() - lastHeartbeat.getTime() > THIRTY_SECONDS) {
+      await db.updateGameServerInstance(gameServerInstance.serverId, { status: GameState.Terminated })
+      gameServerInstanceHeartbeatTracker.delete(gameServerInstance.serverId)
+      console.log('Terminated game server instance', gameServerInstance.serverId)
+    }
+  }
+
+  setTimeout(checkHeartbeats, 1000)
+}
+
+setTimeout(checkHeartbeats, 1000)
 
 fastify.listen({ host: '0.0.0.0', port: 9006 }, (err, address) => {
   if (err) {
