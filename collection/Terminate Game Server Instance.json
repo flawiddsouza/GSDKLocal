@@ -1,0 +1,18 @@
+{
+    "_type": "request",
+    "method": "POST",
+    "body": {
+        "mimeType": "No Body",
+        "text": ""
+    },
+    "sortOrder": 6,
+    "url": "{{API_URL}}/terminateGameServerInstance/:serverId",
+    "parameters": [],
+    "pathParameters": [
+        {
+            "name": "serverId",
+            "value": "baa5b60402d119132e3dcbd7ed95dd836ecbeb0f9bfd8ee641f97a794245088c"
+        }
+    ],
+    "headers": []
+}

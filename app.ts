@@ -20,6 +20,7 @@ const __dirname = path.dirname(__filename)
 const dockerDataDirectory = path.join(__dirname, 'docker-data')
 const portMutex = new Mutex()
 const gameServerInstanceHeartbeatTracker = new Map<string, Date>()
+const gameServerInstanceInitiateTermination = new Set<string>()
 
 const fastify = Fastify({
   logger,
@@ -195,6 +196,33 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
   }
 })
 
+fastify.get('/gameServerInstances', async () => {
+  return db.getUnterminatedGameServerInstances()
+})
+
+fastify.post('/terminateGameServerInstance/:serverId', async (request, reply) => {
+  const serverId = (request.params as { serverId: string }).serverId
+
+  const gameServerInstance = await db.getGameServerInstance(serverId)
+
+  if (!gameServerInstance) {
+    reply.type('application/json').code(404)
+    return { error: 'Server not found' }
+  }
+
+  if (gameServerInstance.status === GameState.Terminated) {
+    reply.type('application/json').code(400)
+    return { error: 'Server already terminated' }
+  }
+
+  gameServerInstanceInitiateTermination.add(gameServerInstance.serverId)
+
+  reply.type('application/json').code(200)
+  return {
+    success: true,
+  }
+})
+
 fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   const serverId = (request.params as { serverId: string }).serverId
 
@@ -237,6 +265,11 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
 
   if (body.CurrentGameState === GameState.Terminating) {
     heartbeatResponse.operation = GameOperation.Continue
+  }
+
+  if (gameServerInstanceInitiateTermination.has(gameServerInstance.serverId)) {
+    gameServerInstanceInitiateTermination.delete(gameServerInstance.serverId)
+    heartbeatResponse.operation = GameOperation.Terminate
   }
 
   gameServerInstanceHeartbeatTracker.set(serverId, new Date())
