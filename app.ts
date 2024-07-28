@@ -249,6 +249,10 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
     heartbeatResponse.operation = GameOperation.Continue
   }
 
+  if (body.CurrentGameState === GameState.Terminating) {
+    heartbeatResponse.operation = GameOperation.Continue
+  }
+
   gameServerInstanceHeartbeatTracker.set(serverId, new Date())
 
   reply.type('application/json').code(200)
