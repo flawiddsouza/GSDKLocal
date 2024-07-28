@@ -6,6 +6,7 @@ import { and, eq, inArray, not } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { Constants } from './constants'
+import { logger } from './logger'
 import { builds, gameServerInstances } from './schema'
 import type { Build, BuildCreateOrUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
 import { GameState } from './types'
@@ -30,13 +31,13 @@ const db = drizzle(sqlite, {
 })
 
 try {
-  console.log('Running migrations...')
+  logger.info('Running migrations...')
   migrate(db, {
     migrationsFolder: './drizzle',
   })
-  console.log('Migrations complete!')
+  logger.info('Migrations complete!')
 } catch (e) {
-  console.error('Error running migrations', e)
+  logger.error('Error running migrations', e)
   process.exit(1)
 }
 
@@ -76,7 +77,7 @@ export async function getUnterminatedGameServerInstances() {
 }
 
 export async function createGameServerInstance(gameServerInstance: GameServerInstanceCreateOrUpdate) {
-  console.log('Creating game server instance', gameServerInstance)
+  logger.info(gameServerInstance, 'Creating game server instance')
   await db.insert(gameServerInstances).values(gameServerInstance)
 }
 

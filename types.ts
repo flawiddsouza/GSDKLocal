@@ -1,4 +1,3 @@
-import type { FastifyLoggerOptions } from 'fastify'
 import type { PinoLoggerOptions } from 'fastify/types/logger'
 import { type SafeParseError, z } from 'zod'
 
@@ -114,4 +113,4 @@ export interface ValidationErrorResponse {
   error: string
 }
 
-export type EnvToLoggerType = Record<string, boolean | (PinoLoggerOptions & FastifyLoggerOptions)>
+export type EnvToLoggerType = Record<string, PinoLoggerOptions>

@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { setInterval } from 'node:timers'
 import { fileURLToPath } from 'node:url'
 import { Mutex } from 'async-mutex'
 import Docker from 'dockerode'
@@ -9,9 +8,10 @@ import Fastify from 'fastify'
 import { publicIpv4 } from 'public-ip'
 import { Constants } from './constants'
 import * as db from './db'
+import { logger } from './logger'
 import { type GameServerInstanceCreateOrUpdate, buildCreateOrUpdateSchema } from './schema'
 import { GameOperation, GameState, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
-import type { EnvToLoggerType, HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
+import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
 dotenv.config()
 
@@ -21,22 +21,8 @@ const dockerDataDirectory = path.join(__dirname, 'docker-data')
 const portMutex = new Mutex()
 const gameServerInstanceHeartbeatTracker = new Map<string, Date>()
 
-const envToLogger: EnvToLoggerType = {
-  development: {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'HH:MM:ss Z',
-        ignore: 'pid,hostname',
-      },
-    },
-  },
-  production: true,
-  test: false,
-}
-
 const fastify = Fastify({
-  logger: envToLogger[process.env.NODE_ENV || 'development'],
+  logger,
 })
 
 if (!existsSync(dockerDataDirectory)) {
@@ -48,7 +34,7 @@ if (!process.env.PUBLIC_IP) {
   process.env.PUBLIC_IP = publicIp
 }
 
-console.log('Public IP:', process.env.PUBLIC_IP)
+logger.info(`Public IP: ${process.env.PUBLIC_IP}`)
 
 fastify.get('/builds', async () => {
   return db.getBuilds()
@@ -223,13 +209,13 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
 
   if (!validationResult.success) {
     reply.type('application/json').code(400)
-    console.log(validationResult.error)
+    request.log.info(validationResult.error)
     return { error: validationResult }
   }
 
   const body: HeartbeatRequestBody = validationResult.data
 
-  console.log(body)
+  request.log.info(body)
 
   const heartbeatResponse: HeartbeatResponse = {
     operation: GameOperation.Invalid,
@@ -260,14 +246,14 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
 })
 
 async function checkHeartbeats() {
-  console.log('Checking heartbeats')
+  logger.info('Checking heartbeats')
 
   const THIRTY_SECONDS = 30 * 1000
   const now = new Date()
 
   const gameServerInstances = await db.getUnterminatedGameServerInstances()
 
-  console.log('Game server instances:', gameServerInstances.length)
+  logger.info(`Game server instances: ${gameServerInstances.length}`)
 
   for (const gameServerInstance of gameServerInstances) {
     if (!gameServerInstanceHeartbeatTracker.has(gameServerInstance.serverId)) {
@@ -282,7 +268,7 @@ async function checkHeartbeats() {
     if (now.getTime() - lastHeartbeat.getTime() > THIRTY_SECONDS) {
       await db.updateGameServerInstance(gameServerInstance.serverId, { status: GameState.Terminated })
       gameServerInstanceHeartbeatTracker.delete(gameServerInstance.serverId)
-      console.log('Terminated game server instance', gameServerInstance.serverId)
+      logger.info(`Terminated game server instance: ${gameServerInstance.serverId}`)
     }
   }
 
