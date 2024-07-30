@@ -10,7 +10,8 @@ import * as agentApi from './agent-api'
 import { Constants } from './constants'
 import * as db from './db'
 import { logger } from './logger'
-import { type GameServerInstanceCreateOrUpdate, agentCeateOrUpdateSchema, buildCreateOrUpdateSchema } from './schema'
+import { agentCeateOrUpdateSchema, buildCreateOrUpdateSchema } from './schema'
+import type { GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
 import { GameOperation, GameState, createContainerRequestBodySchema, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema, startContainerRequestBodySchema } from './types'
 import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
@@ -367,6 +368,21 @@ fastify.post('/terminateGameServerInstance/:serverId', async (request, reply) =>
   }
 })
 
+function initiateGameServerInstanceTerminationIfActiveForMoreThan24Hours(gameServerInstance: GameServerInstance) {
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+  const now = new Date()
+
+  if (gameServerInstanceInitiateTermination.has(gameServerInstance.serverId) === false) {
+    const gameServerInstanceCreatedTime = new Date(gameServerInstance.createdAt as string)
+    const activeTime = now.getTime() - gameServerInstanceCreatedTime.getTime()
+
+    if (activeTime > TWENTY_FOUR_HOURS) {
+      logger.info(`Game server instance active for more than 24 hours, initiating termination: ${gameServerInstance.serverId}`)
+      gameServerInstanceInitiateTermination.add(gameServerInstance.serverId)
+    }
+  }
+}
+
 fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   const serverId = (request.params as { serverId: string }).serverId
 
@@ -410,6 +426,8 @@ fastify.patch('/v1/sessionHosts/:serverId', async (request, reply) => {
   if (body.CurrentGameState === GameState.Terminating) {
     heartbeatResponse.operation = GameOperation.Continue
   }
+
+  initiateGameServerInstanceTerminationIfActiveForMoreThan24Hours(gameServerInstance)
 
   if (gameServerInstanceInitiateTermination.has(gameServerInstance.serverId)) {
     gameServerInstanceInitiateTermination.delete(gameServerInstance.serverId)
