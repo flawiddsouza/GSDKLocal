@@ -45,7 +45,7 @@ try {
 export async function getBuild(buildId: string): Promise<Build | undefined> {
   return db.query.builds.findFirst({
     where: eq(builds.buildId, buildId),
-  }) as Promise<Build | undefined>
+  })
 }
 
 export async function getBuilds() {
@@ -85,6 +85,12 @@ export async function getAvailableAgent(): Promise<Agent | undefined> {
   }
 
   return undefined
+}
+
+export async function getAgent(id: number): Promise<Agent | undefined> {
+  return db.query.agents.findFirst({
+    where: eq(agents.id, id),
+  })
 }
 
 export async function getAgents() {

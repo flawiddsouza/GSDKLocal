@@ -74,6 +74,13 @@ fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true }
 
   const body = validationResult.data
 
+  const build = await db.getBuild(buildId)
+
+  if (!build) {
+    reply.type('application/json').code(404)
+    return { error: 'Build not found' }
+  }
+
   await db.updateBuild(buildId, body)
 
   reply.type('application/json').code(200)
@@ -84,6 +91,13 @@ fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true }
 
 fastify.delete('/build/:buildId', async (request, reply) => {
   const buildId = (request.params as { buildId: string }).buildId
+
+  const build = await db.getBuild(buildId)
+
+  if (!build) {
+    reply.type('application/json').code(404)
+    return { error: 'Build not found' }
+  }
 
   await db.deleteBuild(buildId)
 
@@ -127,6 +141,13 @@ fastify.put('/agent/:id', async (request, reply) => {
 
   const body = validationResult.data
 
+  const agent = await db.getAgent(id)
+
+  if (!agent) {
+    reply.type('application/json').code(404)
+    return { error: 'Agent not found' }
+  }
+
   await db.updateAgent(id, body)
 
   reply.type('application/json').code(200)
@@ -137,6 +158,13 @@ fastify.put('/agent/:id', async (request, reply) => {
 
 fastify.delete('/agent/:id', async (request, reply) => {
   const id = (request.params as { id: number }).id
+
+  const agent = await db.getAgent(id)
+
+  if (!agent) {
+    reply.type('application/json').code(404)
+    return { error: 'Agent not found' }
+  }
 
   await db.deleteAgent(id)
 
