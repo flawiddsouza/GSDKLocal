@@ -4,6 +4,8 @@ import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { createInsertSchema } from 'drizzle-zod'
 import type { SessionConfig } from './types'
 
+const generatedFieldsToOmit = { id: true, createdAt: true, updatedAt: true } as const
+
 export const builds = sqliteTable('builds', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   buildId: text('buildId').notNull().unique(),
@@ -16,9 +18,13 @@ export const builds = sqliteTable('builds', {
 
 export type Build = InferSelectModel<typeof builds>
 
-export type BuildCreateOrUpdate = InferInsertModel<typeof builds>
+export type BuildCreate = InferInsertModel<typeof builds>
 
-export const buildCreateOrUpdateSchema = createInsertSchema(builds)
+export type BuildUpdate = Partial<BuildCreate>
+
+export const buildCreateSchema = createInsertSchema(builds).omit(generatedFieldsToOmit).strict()
+
+export const buildUpdateSchema = buildCreateSchema.partial().omit({ buildId: true }).strict()
 
 export const agents = sqliteTable('agents', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -31,9 +37,13 @@ export const agents = sqliteTable('agents', {
 
 export type Agent = InferSelectModel<typeof agents>
 
-export type AgentCreateOrUpdate = InferInsertModel<typeof agents>
+export type AgentCreate = InferInsertModel<typeof agents>
 
-export const agentCeateOrUpdateSchema = createInsertSchema(agents)
+export type AgentUpdate = Partial<AgentCreate>
+
+export const agentCreateSchema = createInsertSchema(agents).omit(generatedFieldsToOmit).strict()
+
+export const agentUpdateSchema = agentCreateSchema.partial().strict()
 
 export const gameServerInstances = sqliteTable(
   'gameServerInstances',

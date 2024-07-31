@@ -10,8 +10,8 @@ import * as agentApi from './agent-api'
 import { Constants } from './constants'
 import * as db from './db'
 import { logger } from './logger'
-import { agentCeateOrUpdateSchema, buildCreateOrUpdateSchema } from './schema'
-import type { GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
+import { agentCreateSchema, agentUpdateSchema, buildCreateSchema, buildUpdateSchema } from './schema'
+import type { AgentUpdate, BuildUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
 import { GameOperation, GameState, createContainerRequestBodySchema, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema, startContainerRequestBodySchema } from './types'
 import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
@@ -46,7 +46,7 @@ fastify.get('/builds', async () => {
 })
 
 fastify.post('/build', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<GameServerInstanceCreateOrUpdate> | ValidationErrorResponse> => {
-  const validationResult = buildCreateOrUpdateSchema.safeParse(request.body)
+  const validationResult = buildCreateSchema.safeParse(request.body)
 
   if (!validationResult.success) {
     reply.type('application/json').code(400)
@@ -63,10 +63,10 @@ fastify.post('/build', async (request, reply): Promise<{ success: true } | SafeP
   }
 })
 
-fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<GameServerInstanceCreateOrUpdate> | ValidationErrorResponse> => {
+fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<BuildUpdate> | ValidationErrorResponse> => {
   const buildId = (request.params as { buildId: string }).buildId
 
-  const validationResult = buildCreateOrUpdateSchema.safeParse(request.body)
+  const validationResult = buildUpdateSchema.safeParse(request.body)
 
   if (!validationResult.success) {
     reply.type('application/json').code(400)
@@ -80,6 +80,11 @@ fastify.put('/build/:buildId', async (request, reply): Promise<{ success: true }
   if (!build) {
     reply.type('application/json').code(404)
     return { error: 'Build not found' }
+  }
+
+  if (Object.keys(body).length === 0) {
+    reply.type('application/json').code(400)
+    return { error: 'No fields to update' }
   }
 
   await db.updateBuild(buildId, body)
@@ -113,7 +118,7 @@ fastify.get('/agents', async () => {
 })
 
 fastify.post('/agent', async (request, reply) => {
-  const validationResult = agentCeateOrUpdateSchema.safeParse(request.body)
+  const validationResult = agentCreateSchema.safeParse(request.body)
 
   if (!validationResult.success) {
     reply.type('application/json').code(400)
@@ -130,10 +135,10 @@ fastify.post('/agent', async (request, reply) => {
   }
 })
 
-fastify.put('/agent/:id', async (request, reply) => {
+fastify.put('/agent/:id', async (request, reply): Promise<{ success: true } | SafeParseValidationErrorResponse<AgentUpdate> | ValidationErrorResponse> => {
   const id = (request.params as { id: number }).id
 
-  const validationResult = agentCeateOrUpdateSchema.safeParse(request.body)
+  const validationResult = agentUpdateSchema.safeParse(request.body)
 
   if (!validationResult.success) {
     reply.type('application/json').code(400)
@@ -147,6 +152,11 @@ fastify.put('/agent/:id', async (request, reply) => {
   if (!agent) {
     reply.type('application/json').code(404)
     return { error: 'Agent not found' }
+  }
+
+  if (Object.keys(body).length === 0) {
+    reply.type('application/json').code(400)
+    return { error: 'No fields to update' }
   }
 
   await db.updateAgent(id, body)

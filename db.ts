@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { Constants } from './constants'
 import { logger } from './logger'
 import { agents, builds, gameServerInstances } from './schema'
-import type { Agent, AgentCreateOrUpdate, Build, BuildCreateOrUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
+import type { Agent, AgentCreate, AgentUpdate, Build, BuildCreate, BuildUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
 import { GameState } from './types'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -52,11 +52,11 @@ export async function getBuilds() {
   return db.select().from(builds)
 }
 
-export async function createBuild(build: BuildCreateOrUpdate) {
+export async function createBuild(build: BuildCreate) {
   await db.insert(builds).values(build)
 }
 
-export async function updateBuild(buildId: string, update: Partial<BuildCreateOrUpdate>) {
+export async function updateBuild(buildId: string, update: BuildUpdate) {
   return db.update(builds).set(update).where(eq(builds.buildId, buildId))
 }
 
@@ -97,11 +97,11 @@ export async function getAgents() {
   return db.select().from(agents)
 }
 
-export async function createAgent(agent: AgentCreateOrUpdate) {
+export async function createAgent(agent: AgentCreate) {
   await db.insert(agents).values(agent)
 }
 
-export async function updateAgent(id: number, update: Partial<AgentCreateOrUpdate>) {
+export async function updateAgent(id: number, update: AgentUpdate) {
   return db.update(agents).set(update).where(eq(agents.id, id))
 }
 
