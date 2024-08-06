@@ -123,4 +123,5 @@ export const createContainerRequestBodySchema = z.object({
 export const startContainerRequestBodySchema = z.object({
   heartbeatEndpoint: z.string(),
   serverId: z.string(),
+  port: z.string(),
 })

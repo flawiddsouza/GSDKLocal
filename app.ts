@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Mutex } from 'async-mutex'
@@ -21,7 +22,8 @@ const applicationPort = Number(process.env.PORT) || 9006
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const dockerDataDirectory = path.join(__dirname, 'docker-data')
-const gsdkConfigPath = path.join(dockerDataDirectory, Constants.GSDK_CONFIG_FILENAME)
+const dockerDataConfigDirectory = path.join(dockerDataDirectory, Constants.GAME_SERVER_CONFIG_DIRECTORY)
+const dockerDataGameLogsDirectory = path.join(dockerDataDirectory, Constants.GAME_SERVER_LOGS_DIRECTORY)
 const portMutex = new Mutex()
 const gameServerInstanceHeartbeatTracker = new Map<string, Date>()
 const gameServerInstanceInitiateTermination = new Set<string>()
@@ -30,8 +32,12 @@ const fastify = Fastify({
   logger,
 })
 
-if (!existsSync(dockerDataDirectory)) {
-  mkdirSync(dockerDataDirectory, { recursive: true })
+if (!existsSync(dockerDataConfigDirectory)) {
+  mkdirSync(dockerDataConfigDirectory, { recursive: true })
+}
+
+if (!existsSync(dockerDataGameLogsDirectory)) {
+  mkdirSync(dockerDataGameLogsDirectory, { recursive: true })
 }
 
 if (!process.env.PUBLIC_IP) {
@@ -195,6 +201,10 @@ fastify.post('/createContainer', async (request, reply) => {
 
   const body = validationResult.data
 
+  const gsdkConfigDir = path.join(dockerDataConfigDirectory, body.port)
+
+  await mkdir(gsdkConfigDir, { recursive: true })
+
   const docker = new Docker()
 
   const container = await docker.createContainer({
@@ -206,13 +216,19 @@ fastify.post('/createContainer', async (request, reply) => {
       },
       Mounts: [
         {
-          Target: '/data',
-          Source: dockerDataDirectory,
+          Target: `/data/${Constants.GAME_SERVER_CONFIG_DIRECTORY}`,
+          Source: gsdkConfigDir,
+          Type: 'bind',
+          ReadOnly: true,
+        },
+        {
+          Target: `/data/${Constants.GAME_SERVER_LOGS_DIRECTORY}`,
+          Source: dockerDataGameLogsDirectory,
           Type: 'bind',
         },
       ],
     },
-    Env: [`GSDK_CONFIG_FILE=/data/${Constants.GSDK_CONFIG_FILENAME}`],
+    Env: [`GSDK_CONFIG_FILE=/data/${Constants.GAME_SERVER_CONFIG_DIRECTORY}/${Constants.GSDK_CONFIG_FILENAME}`],
   })
 
   reply.type('application/json').code(200)
@@ -237,13 +253,17 @@ fastify.post('/startContainer/:containerId', async (request, reply) => {
 
   const container = docker.getContainer(containerId)
 
+  const gsdkConfigDir = path.join(dockerDataConfigDirectory, body.port)
+
+  const gsdkConfigPath = path.join(gsdkConfigDir, Constants.GSDK_CONFIG_FILENAME)
+
   writeFileSync(
     gsdkConfigPath,
     JSON.stringify(
       {
         heartbeatEndpoint: body.heartbeatEndpoint,
         sessionHostId: body.serverId,
-        logFolder: `/data/GameLogs/${body.serverId}/`,
+        logFolder: `/data/${Constants.GAME_SERVER_LOGS_DIRECTORY}/${body.serverId}/`,
       },
       null,
       4,
@@ -319,7 +339,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
 
     await db.createGameServerInstance(gameServerInstance)
 
-    const startContainerResponse = await agentApi.startContainer(agent, containerId, `${process.env.PUBLIC_IP}:${applicationPort}`, gameServerInstance.serverId)
+    const startContainerResponse = await agentApi.startContainer(agent, containerId, `${process.env.PUBLIC_IP}:${applicationPort}`, gameServerInstance.serverId, port)
 
     if (!startContainerResponse.success) {
       reply.type('application/json').code(500)

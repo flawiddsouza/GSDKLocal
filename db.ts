@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from 'node:fs'
+import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
@@ -145,12 +146,37 @@ export async function getUsedPorts(agentId: number) {
   return data.map((row) => row.port)
 }
 
+function checkPortAvailable(port: number, host = 'localhost'): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        // Port is currently in use
+        resolve(false)
+      } else {
+        reject(err)
+      }
+    })
+
+    server.once('listening', () => {
+      // Port is available
+      server.close()
+      resolve(true)
+    })
+
+    server.listen(port, host)
+  })
+}
+
 export async function getPort(agentId: number): Promise<string | false> {
   const usedPorts = await getUsedPorts(agentId)
 
   for (let port = Constants.START_PORT; port <= Constants.END_PORT; port++) {
     if (!usedPorts.includes(port.toString())) {
-      return port.toString()
+      if (await checkPortAvailable(port)) {
+        return port.toString()
+      }
     }
   }
 

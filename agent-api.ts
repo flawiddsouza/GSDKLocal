@@ -24,14 +24,14 @@ export async function createContainer(agent: Agent, imageName: string, port: str
   }
 }
 
-export async function startContainer(agent: Agent, containerId: string, heartbeatEndpoint: string, serverId: string): Promise<{ success: false } | { success: true; publicIp: string }> {
+export async function startContainer(agent: Agent, containerId: string, heartbeatEndpoint: string, serverId: string, port: string): Promise<{ success: false } | { success: true; publicIp: string }> {
   try {
     const response = await fetch(`${agent.host}/startContainer/${containerId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ heartbeatEndpoint, serverId }),
+      body: JSON.stringify({ heartbeatEndpoint, serverId, port }),
     })
 
     const { publicIp } = await response.json()
