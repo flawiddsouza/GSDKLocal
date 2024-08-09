@@ -126,6 +126,10 @@ export const startContainerRequestBodySchema = z.object({
   port: z.string(),
 })
 
+export const isPortAvailableRequestBodySchema = z.object({
+  port: z.number(),
+})
+
 interface Config {
   dockerDataConfigDirectory: string
   dockerDataGameLogsDirectory: string

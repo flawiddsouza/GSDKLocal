@@ -47,3 +47,26 @@ export async function startContainer(agent: Agent, containerId: string, heartbea
     }
   }
 }
+
+export async function isPortAvailable(agent: Agent, port: number): Promise<{ success: boolean }> {
+  try {
+    const response = await fetch(`${agent.host}/agent/isPortAvailable`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ port }),
+    })
+
+    const { isPortAvailable }: { isPortAvailable: boolean } = await response.json()
+
+    return {
+      success: isPortAvailable,
+    }
+  } catch (error) {
+    console.error(error)
+    return {
+      success: false,
+    }
+  }
+}

@@ -9,6 +9,7 @@ import * as agentApi from './agent-api'
 import { agentRoutes } from './agent-routes'
 import { Constants } from './constants'
 import * as db from './db'
+import * as helpers from './helpers'
 import { logger } from './logger'
 import { agentCreateSchema, agentUpdateSchema, buildCreateSchema, buildUpdateSchema } from './schema'
 import type { AgentUpdate, BuildUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
@@ -225,7 +226,7 @@ fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFa
       return { error: 'No agents available' }
     }
 
-    const port = await db.getPort(agent.id)
+    const port = await helpers.getPort(agent)
 
     if (!port) {
       reply.type('application/json').code(400)

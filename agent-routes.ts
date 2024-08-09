@@ -4,7 +4,8 @@ import path from 'node:path'
 import Docker from 'dockerode'
 import type { FastifyInstance } from 'fastify'
 import { Constants } from './constants'
-import { createContainerRequestBodySchema, startContainerRequestBodySchema } from './types'
+import { checkPortAvailable } from './helpers'
+import { createContainerRequestBodySchema, isPortAvailableRequestBodySchema, startContainerRequestBodySchema } from './types'
 
 export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
   const dockerDataConfigDirectory = fastify.config.dockerDataConfigDirectory
@@ -94,6 +95,24 @@ export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
     reply.type('application/json').code(200)
     return {
       publicIp: process.env.PUBLIC_IP,
+    }
+  })
+
+  fastify.post('/isPortAvailable', async (request, reply) => {
+    const validationResult = isPortAvailableRequestBodySchema.safeParse(request.body)
+
+    if (!validationResult.success) {
+      reply.type('application/json').code(400)
+      return { error: validationResult }
+    }
+
+    const body = validationResult.data
+
+    const isPortAvailable = await checkPortAvailable(body.port)
+
+    reply.type('application/json').code(200)
+    return {
+      isPortAvailable,
     }
   })
 }
