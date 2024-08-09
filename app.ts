@@ -1,19 +1,18 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Mutex } from 'async-mutex'
-import Docker from 'dockerode'
 import dotenv from 'dotenv'
 import Fastify from 'fastify'
 import { publicIpv4 } from 'public-ip'
 import * as agentApi from './agent-api'
+import { agentRoutes } from './agent-routes'
 import { Constants } from './constants'
 import * as db from './db'
 import { logger } from './logger'
 import { agentCreateSchema, agentUpdateSchema, buildCreateSchema, buildUpdateSchema } from './schema'
 import type { AgentUpdate, BuildUpdate, GameServerInstance, GameServerInstanceCreateOrUpdate } from './schema'
-import { GameOperation, GameState, createContainerRequestBodySchema, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema, startContainerRequestBodySchema } from './types'
+import { GameOperation, GameState, heartbeatRequestBodySchema, requestMultiplayerServerRequestBodySchema } from './types'
 import type { HeartbeatRequestBody, HeartbeatResponse, PlayFabRequestMultiplayer, RequestMultiplayerServerRequestBody, SafeParseValidationErrorResponse, ValidationErrorResponse } from './types'
 
 dotenv.config()
@@ -30,6 +29,11 @@ const gameServerInstanceInitiateTermination = new Set<string>()
 
 const fastify = Fastify({
   logger,
+})
+
+fastify.decorate('config', {
+  dockerDataConfigDirectory,
+  dockerDataGameLogsDirectory,
 })
 
 if (!existsSync(dockerDataConfigDirectory)) {
@@ -191,92 +195,7 @@ fastify.delete('/agent/:id', async (request, reply) => {
   }
 })
 
-fastify.post('/createContainer', async (request, reply) => {
-  const validationResult = createContainerRequestBodySchema.safeParse(request.body)
-
-  if (!validationResult.success) {
-    reply.type('application/json').code(400)
-    return { error: validationResult }
-  }
-
-  const body = validationResult.data
-
-  const gsdkConfigDir = path.join(dockerDataConfigDirectory, body.port)
-
-  await mkdir(gsdkConfigDir, { recursive: true })
-
-  const docker = new Docker()
-
-  const container = await docker.createContainer({
-    Image: body.imageName,
-    HostConfig: {
-      NetworkMode: 'host',
-      PortBindings: {
-        [`${body.port}/tcp`]: [{ HostPort: body.port }],
-      },
-      Mounts: [
-        {
-          Target: `/data/${Constants.GAME_SERVER_CONFIG_DIRECTORY}`,
-          Source: gsdkConfigDir,
-          Type: 'bind',
-          ReadOnly: true,
-        },
-        {
-          Target: `/data/${Constants.GAME_SERVER_LOGS_DIRECTORY}`,
-          Source: dockerDataGameLogsDirectory,
-          Type: 'bind',
-        },
-      ],
-    },
-    Env: [`GSDK_CONFIG_FILE=/data/${Constants.GAME_SERVER_CONFIG_DIRECTORY}/${Constants.GSDK_CONFIG_FILENAME}`],
-  })
-
-  reply.type('application/json').code(200)
-  return {
-    containerId: container.id,
-  }
-})
-
-fastify.post('/startContainer/:containerId', async (request, reply) => {
-  const containerId = (request.params as { containerId: string }).containerId
-
-  const validationResult = startContainerRequestBodySchema.safeParse(request.body)
-
-  if (!validationResult.success) {
-    reply.type('application/json').code(400)
-    return { error: validationResult }
-  }
-
-  const body = validationResult.data
-
-  const docker = new Docker()
-
-  const container = docker.getContainer(containerId)
-
-  const gsdkConfigDir = path.join(dockerDataConfigDirectory, body.port)
-
-  const gsdkConfigPath = path.join(gsdkConfigDir, Constants.GSDK_CONFIG_FILENAME)
-
-  writeFileSync(
-    gsdkConfigPath,
-    JSON.stringify(
-      {
-        heartbeatEndpoint: body.heartbeatEndpoint,
-        sessionHostId: body.serverId,
-        logFolder: `/data/${Constants.GAME_SERVER_LOGS_DIRECTORY}/${body.serverId}/`,
-      },
-      null,
-      4,
-    ),
-  )
-
-  await container.start()
-
-  reply.type('application/json').code(200)
-  return {
-    publicIp: process.env.PUBLIC_IP,
-  }
-})
+fastify.register(agentRoutes, { prefix: '/agent' })
 
 fastify.post('/requestMultiplayerServer', async (request, reply): Promise<PlayFabRequestMultiplayer.Response | SafeParseValidationErrorResponse<RequestMultiplayerServerRequestBody> | ValidationErrorResponse> => {
   // Wait for the lock to be available

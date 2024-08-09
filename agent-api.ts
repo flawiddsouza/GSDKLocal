@@ -2,7 +2,7 @@ import type { Agent } from './schema'
 
 export async function createContainer(agent: Agent, imageName: string, port: string): Promise<{ success: false } | { success: true; containerId: string }> {
   try {
-    const response = await fetch(`${agent.host}/createContainer`, {
+    const response = await fetch(`${agent.host}/agent/createContainer`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ export async function createContainer(agent: Agent, imageName: string, port: str
 
 export async function startContainer(agent: Agent, containerId: string, heartbeatEndpoint: string, serverId: string, port: string): Promise<{ success: false } | { success: true; publicIp: string }> {
   try {
-    const response = await fetch(`${agent.host}/startContainer/${containerId}`, {
+    const response = await fetch(`${agent.host}/agent/startContainer/${containerId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

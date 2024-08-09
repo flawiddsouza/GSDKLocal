@@ -125,3 +125,14 @@ export const startContainerRequestBodySchema = z.object({
   serverId: z.string(),
   port: z.string(),
 })
+
+interface Config {
+  dockerDataConfigDirectory: string
+  dockerDataGameLogsDirectory: string
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: Config
+  }
+}
